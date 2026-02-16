@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ - ФК Вихър</title>
+    <style>
+        body { background: #0d0d0d; color: white; font-family: sans-serif; text-align: center; padding: 40px 20px; }
+        .btn { display: block; width: 100%; max-width: 300px; margin: 15px auto; padding: 20px; border-radius: 15px; border: none; font-weight: bold; font-size: 18px; cursor: pointer; text-transform: uppercase; }
+        .green { background: #32cd32; color: black; }
+        .yellow { background: #ffd700; color: black; }
+        .red { background: #ff4d4d; color: white; }
+        h1 { color: #32cd32; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Управление: vihar_01</h1>
+    
+    <button class="btn green" onclick="setStatus('paid')">✅ Маркирай: ПЛАТЕНО</button>
+    <button class="btn yellow" onclick="setStatus('warning')">⏳ Прати: НАПОМНЯНЕ</button>
+    <button class="btn red" onclick="setStatus('overdue')">⚠️ Маркирай: ПРОСРОЧЕНО</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
+
+        // ТУК СЛОЖИ СЪЩИЯ CONFIG КАТО В ДРУГИЯ ФАЙЛ
+        const firebaseConfig = {
+            apiKey: "AIzaSyCX3HFb_Y_T0fBp3ZHdycX0ov7jxVCPB0s",
+            authDomain: "moozuk-demo.firebaseapp.com",
+            databaseURL: "https://moozuk-demo-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "moozuk-demo",
+            storageBucket: "moozuk-demo.firebasestorage.app",
+            messagingSenderId: "980222896282",
+            appId: "1:980222896282:web:0c927875a872510d54d723"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.setStatus = function(newStatus) {
+            set(ref(db, 'players/vihar_01/status'), newStatus)
+                .then(() => alert("Статусът е обновен на: " + newStatus))
+                .catch((error) => alert("Грешка: " + error.message));
+        }
+    </script>
+</body>
+</html>

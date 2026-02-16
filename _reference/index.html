@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ФК Вихър Войводиново - Смарт Профил</title>
+    <style>
+        :root { 
+            --vihar-green: #32cd32; --vihar-dark-green: #1e5d1e;
+            --black: #0d0d0d; --dark-gray: #1a1a1a;
+            --white: #ffffff; --red: #ff4d4d;
+        }
+        body { background: var(--black); font-family: 'Segoe UI', Arial, sans-serif; color: var(--white); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .app-container { width: 100%; max-width: 400px; }
+        .status-card { background: var(--dark-gray); border-radius: 25px; padding: 30px; text-align: center; transition: all 0.5s ease; border: 2px solid var(--vihar-dark-green); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .paid { border-color: var(--vihar-green); box-shadow: 0 0 20px rgba(50, 205, 50, 0.3); }
+        .warning { border-color: #ffd700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+        .overdue { border-color: var(--red); box-shadow: 0 0 20px rgba(255, 77, 77, 0.3); }
+        .club-logo { font-weight: 800; font-size: 14px; color: var(--vihar-green); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        .player-name { font-size: 20px; color: var(--white); margin-bottom: 20px; font-weight: bold; }
+        .icon-circle { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 20px; font-size: 40px; }
+        .btn { display: block; padding: 15px; border-radius: 12px; text-decoration: none; font-weight: bold; text-transform: uppercase; transition: 0.3s; background: var(--vihar-green); color: var(--black); }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div id="statusCard" class="status-card warning">
+        <div class="club-logo">ФК ВИХЪР ВОЙВОДИНОВО</div>
+        <div id="playerName" class="player-name">Зареждане...</div>
+        <div id="iconBox" class="icon-circle">⏳</div>
+        <h2 id="title">ЗАРЕЖДАНЕ...</h2>
+        <p id="message">Синхронизиране с базата на Вихър...</p>
+        <a href="#" id="actionBtn" class="btn">ПЛАТИ СЕГА</a>
+    </div>
+    <p style="text-align:center; font-size:12px; margin-top:15px; opacity:0.5;">Активирайте известията за автоматични актуализации.</p>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCX3HFb_Y_T0fBp3ZHdycX0ov7jxVCPB0s",
+    authDomain: "moozuk-demo.firebaseapp.com",
+    databaseURL: "https://moozuk-demo-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "moozuk-demo",
+    storageBucket: "moozuk-demo.firebasestorage.app",
+    messagingSenderId: "980222896282",
+    appId: "1:980222896282:web:0c927875a872510d54d723"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Искаме разрешение за известия веднага
+  if ("Notification" in window) {
+      Notification.requestPermission();
+  }
+
+  let lastStatus = null;
+
+  onValue(ref(db, 'players/vihar_01'), (snapshot) => {
+    const data = snapshot.val();
+    if(data) {
+        // Проверка дали статусът се е променил, за да пуснем нотификация
+        if (lastStatus !== null && lastStatus !== data.status) {
+            sendLocalNotification(data.status);
+        }
+        lastStatus = data.status;
+
+        const card = document.getElementById('statusCard');
+        const icon = document.getElementById('iconBox');
+        const title = document.getElementById('title');
+        const msg = document.getElementById('message');
+        const btn = document.getElementById('actionBtn');
+        document.getElementById('playerName').innerText = data.name || "Играч на Вихър";
+
+        if(data.status === 'paid') {
+            card.className = 'status-card paid'; icon.innerText = '✅'; title.innerText = 'ПЛАТЕНО';
+            msg.innerText = 'Всичко е наред! Членският внос е успешно отчетен.';
+            btn.innerText = 'МОЯТ ПРОГРЕС'; btn.style.background = 'var(--vihar-green)';
+        } else if(data.status === 'warning') {
+            card.className = 'status-card warning'; icon.innerText = '⏳'; title.innerText = 'НАПОМНЯНЕ';
+            msg.innerText = 'Остават по-малко от 7 дни до крайния срок.';
+            btn.innerText = 'ПЛАТИ СЕГА'; btn.style.background = '#ffd700';
+        } else if(data.status === 'overdue') {
+            card.className = 'status-card overdue'; icon.innerText = '⚠️'; title.innerText = 'ПРОСРОЧЕНО';
+            msg.innerText = 'Срокът изтече. От 1-во число се начисляват 2 такси.';
+            btn.innerText = 'АКТУАЛИЗИРАЙ'; btn.style.background = 'var(--red)'; btn.style.color = 'white';
+        }
+    }
+  });
+
+  function sendLocalNotification(status) {
+      if (Notification.permission === "granted") {
+          let text = status === 'paid' ? "Плащането е успешно!" : "Имате ново напомняне от клуба.";
+          new Notification("ФК Вихър Войводиново", {
+              body: text,
+              icon: "https://cdn-icons-png.flaticon.com/512/5321/5321394.png" // Примерна икона на топка
+          });
+          // Ако искаш звук (само ако телефонът не е в тих режим)
+          const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+          audio.play();
+      }
+  }
+</script>
+</body>
+</html>
