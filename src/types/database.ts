@@ -4,6 +4,7 @@ export interface Club {
   id: string;
   name: string;
   slug: string;
+  emblem_url: string | null;
   created_at: string;
 }
 
@@ -13,12 +14,17 @@ export interface Player {
   full_name: string;
   nfc_tag_id: string;
   status: PlayerStatus;
+  jersey_number: string | null;
+  birth_date: string | null;
+  team_group: string | null;
+  last_payment_date: string | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface PlayerWithClub extends Player {
-  clubs: Pick<Club, "name" | "slug">;
+  clubs: Pick<Club, "name" | "slug" | "emblem_url">;
 }
 
 export interface PushSubscription {

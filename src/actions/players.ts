@@ -11,9 +11,14 @@ export async function updatePlayerStatus(
 ) {
   const supabase = await createClient();
 
+  const updateData: { status: PlayerStatus; last_payment_date?: string } = { status };
+  if (status === "paid") {
+    updateData.last_payment_date = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("players")
-    .update({ status })
+    .update(updateData)
     .eq("id", playerId);
 
   if (error) {

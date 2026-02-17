@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { StatusCard } from "./status-card";
+import { ClubCard } from "./club-card";
 import type { PlayerStatus } from "@/types/database";
 
 interface RealtimeStatusCardProps {
@@ -10,6 +10,12 @@ interface RealtimeStatusCardProps {
   playerName: string;
   clubName: string;
   initialStatus: PlayerStatus;
+  jerseyNumber: string | null;
+  birthDate: string | null;
+  teamGroup: string | null;
+  lastPaymentDate: string | null;
+  avatarUrl: string | null;
+  emblemUrl: string | null;
 }
 
 export function RealtimeStatusCard({
@@ -17,15 +23,18 @@ export function RealtimeStatusCard({
   playerName,
   clubName,
   initialStatus,
+  jerseyNumber,
+  birthDate,
+  teamGroup,
+  lastPaymentDate,
+  avatarUrl,
+  emblemUrl,
 }: RealtimeStatusCardProps) {
   const [status, setStatus] = useState<PlayerStatus>(initialStatus);
+  const [paymentDate, setPaymentDate] = useState<string | null>(lastPaymentDate);
 
   useEffect(() => {
     const supabase = createClient();
-
-    console.log("[realtime] Subscribing to player:", playerId);
-    console.log("[realtime] Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("[realtime] Anon key present:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
     const channel = supabase
       .channel(`player-${playerId}`)
@@ -38,28 +47,34 @@ export function RealtimeStatusCard({
           filter: `id=eq.${playerId}`,
         },
         (payload) => {
-          console.log("[realtime] Received update:", payload.new.status);
           setStatus(payload.new.status as PlayerStatus);
+          if (payload.new.last_payment_date) {
+            setPaymentDate(payload.new.last_payment_date as string);
+          }
         }
       )
       .subscribe((status, err) => {
-        console.log("[realtime] Channel status:", status);
         if (err) {
           console.error("[realtime] Channel error:", err.message);
         }
       });
 
     return () => {
-      console.log("[realtime] Unsubscribing from player:", playerId);
       supabase.removeChannel(channel);
     };
   }, [playerId]);
 
   return (
-    <StatusCard
+    <ClubCard
       playerName={playerName}
       clubName={clubName}
       status={status}
+      jerseyNumber={jerseyNumber}
+      birthDate={birthDate}
+      teamGroup={teamGroup}
+      lastPaymentDate={paymentDate}
+      avatarUrl={avatarUrl}
+      emblemUrl={emblemUrl}
     />
   );
 }
