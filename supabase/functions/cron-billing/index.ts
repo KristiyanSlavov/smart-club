@@ -3,7 +3,7 @@ import webPush from "npm:web-push@3";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  Deno.env.get("SERVICE_ROLE_KEY")!
 );
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
@@ -103,7 +103,7 @@ function resolveType(body: { type?: string }): CronType | null {
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
-  if (authHeader !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) {
+  if (authHeader !== `Bearer ${Deno.env.get("SERVICE_ROLE_KEY")}`) {
     console.error("[cron] Unauthorized request");
     return new Response("Unauthorized", { status: 401 });
   }
