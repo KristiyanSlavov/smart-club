@@ -10,7 +10,14 @@ export default function Home() {
       <p className="mb-8 max-w-md text-white/50">
         Система за управление на членски внос с NFC профили в реално време.
       </p>
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
+        <Button
+          asChild
+          size="lg"
+          className="bg-[#32cd32] text-lg font-bold text-black shadow-[0_0_20px_rgba(50,205,50,0.3)] hover:bg-[#2db82d] hover:shadow-[0_0_30px_rgba(50,205,50,0.5)]"
+        >
+          <Link href="/admin/players">Ръчно Плащане</Link>
+        </Button>
         <Button asChild className="bg-[#32cd32] text-black hover:bg-[#2db82d]">
           <Link href="/p/vihar_01">Demo Profile</Link>
         </Button>

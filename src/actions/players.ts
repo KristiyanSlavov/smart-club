@@ -66,6 +66,45 @@ export async function createPlayer(data: {
   return { success: true };
 }
 
+export async function markPlayerPaid(playerId: string, playerName: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("players")
+    .update({
+      status: "paid" as PlayerStatus,
+      last_payment_date: new Date().toISOString(),
+    })
+    .eq("id", playerId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  const { data: player } = await supabase
+    .from("players")
+    .select("nfc_tag_id")
+    .eq("id", playerId)
+    .single();
+
+  const profileUrl = player?.nfc_tag_id
+    ? `${process.env.NEXT_PUBLIC_APP_URL ?? "https://smart-club-henna.vercel.app"}/p/${player.nfc_tag_id}`
+    : undefined;
+
+  sendPushToPlayer(playerId, {
+    title: "Smart Club",
+    body: `Плащането е успешно! Месечната такса за ${playerName} е отразена.`,
+    url: profileUrl,
+  }).catch(() => {});
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/players");
+  if (player?.nfc_tag_id) {
+    revalidatePath(`/admin/${player.nfc_tag_id}`);
+  }
+  return { success: true };
+}
+
 export async function deletePlayer(playerId: string) {
   const supabase = await createClient();
 
