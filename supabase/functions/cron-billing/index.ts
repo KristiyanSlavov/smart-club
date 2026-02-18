@@ -42,14 +42,21 @@ async function sendPushToPlayer(
     return { sent: 0, failed: 0, noSubs: true };
   }
 
-  console.log(`[cron] Found ${subscriptions.length} subscription(s) for ${playerName}`);
+  // Deduplicate by endpoint — keep only the latest row per endpoint
+  const seen = new Map<string, typeof subscriptions[number]>();
+  for (const sub of subscriptions) {
+    seen.set(sub.endpoint, sub);
+  }
+  const uniqueSubs = [...seen.values()];
+
+  console.log(`[cron] Found ${subscriptions.length} row(s), ${uniqueSubs.length} unique endpoint(s) for ${playerName}`);
 
   const message = JSON.stringify(payload);
   let sent = 0;
   let failed = 0;
   const expiredIds: string[] = [];
 
-  for (const sub of subscriptions) {
+  for (const sub of uniqueSubs) {
     console.log(`[cron] Attempting to send push to ${playerName}, endpoint: ${sub.endpoint.slice(0, 60)}...`);
     try {
       await webPush.sendNotification(

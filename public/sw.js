@@ -1,43 +1,46 @@
 self.addEventListener("push", (event) => {
-  let data = { title: "Smart Club", body: "Имате ново съобщение", url: null };
+  // Guard: skip if no data at all
+  if (!event.data) return;
 
+  let data;
   try {
-    if (event.data) {
-      data = event.data.json();
-    }
+    data = event.data.json();
   } catch (e) {
-    console.warn("[sw] Push data was not JSON, using text instead");
-    data.body = event.data.text();
+    const text = event.data.text();
+    if (!text) return; // empty payload — do not show a blank notification
+    data = { title: "Smart Club", body: text };
   }
+
+  // Guard: skip malformed payloads that have no body
+  if (!data || !data.body) return;
 
   const options = {
     body: data.body,
     vibrate: [100, 50, 100],
-    data: { url: data.url || "/", dateOfArrival: Date.now() },
+    tag: "smartclub", // Android replaces instead of stacking
+    renotify: true,   // still vibrate/sound on replacement
+    data: { url: data.url || "/" },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(self.registration.showNotification(data.title || "Smart Club", options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const raw = event.notification.data?.url || "/";
-  // Ensure absolute URL — relative paths won't work on Android
   const targetUrl = raw.startsWith("http") ? raw : new URL(raw, self.location.origin).href;
 
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((windowClients) => {
-        // Try to find an existing tab with this URL and focus it
         for (const client of windowClients) {
           if (new URL(client.url).pathname === new URL(targetUrl).pathname) {
             client.navigate(targetUrl);
             return client.focus();
           }
         }
-        // No matching tab — open a new one
         return clients.openWindow(targetUrl);
       })
   );

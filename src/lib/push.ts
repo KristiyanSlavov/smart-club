@@ -52,6 +52,15 @@ export async function subscribeToPush(
   const json = subscription.toJSON();
   const supabase = createClient();
 
+  // Remove any old/stale subscriptions for this player so only the
+  // current device endpoint remains — prevents duplicate notifications.
+  console.log("[push] Cleaning old subscriptions for player:", playerId);
+  await supabase
+    .from("push_subscriptions")
+    .delete()
+    .eq("player_id", playerId)
+    .neq("endpoint", json.endpoint!);
+
   console.log("[push] Saving subscription to database for player:", playerId);
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
