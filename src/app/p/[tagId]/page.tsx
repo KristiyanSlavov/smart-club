@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${player.full_name} - ${player.clubs.name}`,
-    description: `Смарт профил на ${player.full_name}`,
+    description: `Клубна карта на ${player.full_name}`,
   };
 }
 
@@ -35,7 +35,9 @@ export default async function ProfilePage({ params }: Props) {
 
   const { data: player } = await supabase
     .from("players")
-    .select("id, full_name, status, clubs(name)")
+    .select(
+      "id, full_name, status, jersey_number, birth_date, team_group, last_payment_date, avatar_url, clubs(name, emblem_url)"
+    )
     .eq("nfc_tag_id", tagId)
     .single<PlayerWithClub>();
 
@@ -44,18 +46,24 @@ export default async function ProfilePage({ params }: Props) {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#0d0d0d] p-5">
-      <div className="w-full max-w-[400px]">
+    <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
+      <div className="w-full max-w-[420px]">
         <RealtimeStatusCard
           playerId={player.id}
           playerName={player.full_name}
           clubName={player.clubs.name}
           initialStatus={player.status}
+          jerseyNumber={player.jersey_number}
+          birthDate={player.birth_date}
+          teamGroup={player.team_group}
+          lastPaymentDate={player.last_payment_date}
+          avatarUrl={player.avatar_url}
+          emblemUrl={player.clubs.emblem_url}
         />
-        <div className="mt-4">
+        <div className="mt-3">
           <EnableNotificationsButton playerId={player.id} />
         </div>
-        <p className="mt-3 text-center text-xs text-white/50">
+        <p className="mt-2 text-center text-[10px] text-white/25">
           Получавайте push известия дори когато браузърът е затворен.
         </p>
       </div>

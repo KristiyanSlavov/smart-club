@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx next build:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(npx supabase:*)"
     ]
   }
 }

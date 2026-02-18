@@ -5,7 +5,7 @@ import { webPush } from "@/lib/web-push";
 
 export async function sendPushToPlayer(
   playerId: string,
-  payload: { title: string; body: string }
+  payload: { title: string; body: string; url?: string }
 ) {
   const supabase = await createClient();
 

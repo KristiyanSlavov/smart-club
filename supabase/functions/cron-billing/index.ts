@@ -18,10 +18,12 @@ webPush.setVapidDetails(
   VAPID_PRIVATE_KEY
 );
 
+const APP_URL = Deno.env.get("APP_URL") ?? "https://smart-club-henna.vercel.app";
+
 async function sendPushToPlayer(
   playerId: string,
   playerName: string,
-  payload: { title: string; body: string }
+  payload: { title: string; body: string; url?: string }
 ): Promise<{ sent: number; failed: number; noSubs: boolean }> {
   console.log(`[cron] Looking up push_subscriptions for player: ${playerName} (${playerId})`);
 
@@ -40,14 +42,21 @@ async function sendPushToPlayer(
     return { sent: 0, failed: 0, noSubs: true };
   }
 
-  console.log(`[cron] Found ${subscriptions.length} subscription(s) for ${playerName}`);
+  // Deduplicate by endpoint — keep only the latest row per endpoint
+  const seen = new Map<string, typeof subscriptions[number]>();
+  for (const sub of subscriptions) {
+    seen.set(sub.endpoint, sub);
+  }
+  const uniqueSubs = [...seen.values()];
+
+  console.log(`[cron] Found ${subscriptions.length} row(s), ${uniqueSubs.length} unique endpoint(s) for ${playerName}`);
 
   const message = JSON.stringify(payload);
   let sent = 0;
   let failed = 0;
   const expiredIds: string[] = [];
 
-  for (const sub of subscriptions) {
+  for (const sub of uniqueSubs) {
     console.log(`[cron] Attempting to send push to ${playerName}, endpoint: ${sub.endpoint.slice(0, 60)}...`);
     try {
       await webPush.sendNotification(
@@ -133,7 +142,7 @@ Deno.serve(async (req) => {
   if (type === "reminder_25") {
     const { data: players, error: playersErr } = await supabase
       .from("players")
-      .select("id, full_name, status")
+      .select("id, full_name, nfc_tag_id, status")
       .neq("status", "paid");
 
     console.log(`[cron] Found ${players?.length ?? 0} player(s) with unpaid status`);
@@ -143,10 +152,11 @@ Deno.serve(async (req) => {
       players.forEach((p) => console.log(`[cron]   - ${p.full_name} (status: ${p.status})`));
 
       const results = await Promise.allSettled(
-        players.map((p: { id: string; full_name: string }) =>
+        players.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
           sendPushToPlayer(p.id, p.full_name, {
             title: "Smart Club",
             body: "Напомняне: Моля, платете месечната такса до края на месеца.",
+            url: `${APP_URL}/p/${p.nfc_tag_id}`,
           })
         )
       );
@@ -157,7 +167,7 @@ Deno.serve(async (req) => {
   } else if (type === "reminder_29") {
     const { data: players, error: playersErr } = await supabase
       .from("players")
-      .select("id, full_name, status")
+      .select("id, full_name, nfc_tag_id, status")
       .neq("status", "paid");
 
     console.log(`[cron] Found ${players?.length ?? 0} player(s) with unpaid status`);
@@ -167,10 +177,11 @@ Deno.serve(async (req) => {
       players.forEach((p) => console.log(`[cron]   - ${p.full_name} (status: ${p.status})`));
 
       const results = await Promise.allSettled(
-        players.map((p: { id: string; full_name: string }) =>
+        players.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
           sendPushToPlayer(p.id, p.full_name, {
             title: "Smart Club",
             body: "Последно напомняне: Месечната такса все още не е платена.",
+            url: `${APP_URL}/p/${p.nfc_tag_id}`,
           })
         )
       );
@@ -182,7 +193,7 @@ Deno.serve(async (req) => {
     // Mark unpaid players as overdue
     const { data: unpaid, error: unpaidErr } = await supabase
       .from("players")
-      .select("id, full_name, status")
+      .select("id, full_name, nfc_tag_id, status")
       .neq("status", "paid");
 
     console.log(`[cron] Found ${unpaid?.length ?? 0} player(s) with unpaid status (for overdue)`);
@@ -203,10 +214,11 @@ Deno.serve(async (req) => {
       }
 
       const results = await Promise.allSettled(
-        unpaid.map((p: { id: string; full_name: string }) =>
+        unpaid.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
           sendPushToPlayer(p.id, p.full_name, {
             title: "Smart Club",
             body: "Просрочено плащане! Дължите две такси.",
+            url: `${APP_URL}/p/${p.nfc_tag_id}`,
           })
         )
       );
