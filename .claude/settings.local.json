@@ -4,7 +4,9 @@
       "Bash(npx next build:*)",
       "Bash(npm run build:*)",
       "Bash(supabase functions deploy:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(npx shadcn@latest add input --yes)",
+      "Bash(del \"C:\\\\Users\\\\Martina\\\\Desktop\\\\Mozyk\\\\sport-system\\\\smart-club\\\\src\\\\app\\\\admin\\\\admin-dashboard.tsx\")"
     ]
   }
 }
