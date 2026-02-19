@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AdminGuard } from "@/components/shared/admin-guard";
 import { PlayerAdminCard } from "./player-admin-card";
 import type { Player } from "@/types/database";
 import type { Metadata } from "next";
@@ -44,8 +45,10 @@ export default async function AdminPlayerPage({ params }: Props) {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
-      <PlayerAdminCard player={player} />
-    </main>
+    <AdminGuard>
+      <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
+        <PlayerAdminCard player={player} />
+      </main>
+    </AdminGuard>
   );
 }

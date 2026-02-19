@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { SmartRedirect } from "@/components/shared/smart-redirect";
 import { RealtimeStatusCard } from "@/components/shared/realtime-status-card";
 import { EnableNotificationsButton } from "@/components/shared/enable-notifications-button";
 import type { PlayerWithClub } from "@/types/database";
@@ -46,27 +47,29 @@ export default async function ProfilePage({ params }: Props) {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
-      <div className="w-full max-w-[420px]">
-        <RealtimeStatusCard
-          playerId={player.id}
-          playerName={player.full_name}
-          clubName={player.clubs.name}
-          initialStatus={player.status}
-          jerseyNumber={player.jersey_number}
-          birthDate={player.birth_date}
-          teamGroup={player.team_group}
-          lastPaymentDate={player.last_payment_date}
-          avatarUrl={player.avatar_url}
-          emblemUrl={player.clubs.emblem_url}
-        />
-        <div className="mt-3">
-          <EnableNotificationsButton playerId={player.id} />
+    <SmartRedirect tagId={tagId}>
+      <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="w-full max-w-[420px]">
+          <RealtimeStatusCard
+            playerId={player.id}
+            playerName={player.full_name}
+            clubName={player.clubs.name}
+            initialStatus={player.status}
+            jerseyNumber={player.jersey_number}
+            birthDate={player.birth_date}
+            teamGroup={player.team_group}
+            lastPaymentDate={player.last_payment_date}
+            avatarUrl={player.avatar_url}
+            emblemUrl={player.clubs.emblem_url}
+          />
+          <div className="mt-3">
+            <EnableNotificationsButton playerId={player.id} />
+          </div>
+          <p className="mt-2 text-center text-[10px] text-white/25">
+            Получавайте push известия дори когато браузърът е затворен.
+          </p>
         </div>
-        <p className="mt-2 text-center text-[10px] text-white/25">
-          Получавайте push известия дори когато браузърът е затворен.
-        </p>
-      </div>
-    </main>
+      </main>
+    </SmartRedirect>
   );
 }
