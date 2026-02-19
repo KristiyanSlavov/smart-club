@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminActivator } from "@/components/shared/admin-activator";
 
 export default function Home() {
   return (
@@ -29,6 +31,9 @@ export default function Home() {
           <Link href="/admin">Admin Panel</Link>
         </Button>
       </div>
+      <Suspense>
+        <AdminActivator />
+      </Suspense>
     </main>
   );
 }
