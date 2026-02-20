@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { markPlayerPaid } from "@/actions/players";
+import { PlayerAvatar } from "@/components/shared/player-avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -135,20 +135,13 @@ export function PlayersListDashboard({
               <Card key={player.id} className="border-white/10 bg-[#1a1a1a]">
                 <CardContent className="flex items-center gap-4 p-4">
                   {/* Avatar */}
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/10">
-                    {player.avatar_url ? (
-                      <Image
-                        src={player.avatar_url}
-                        alt={player.full_name}
-                        fill
-                        className="object-cover"
-                        sizes="40px"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white/40">
-                        {player.full_name.charAt(0)}
-                      </div>
-                    )}
+                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/10">
+                    <PlayerAvatar
+                      src={player.avatar_url}
+                      alt={player.full_name}
+                      size={40}
+                      className="h-full w-full rounded-full"
+                    />
                   </div>
 
                   {/* Info */}
