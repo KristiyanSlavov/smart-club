@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { markPlayerPaid } from "@/actions/players";
+import { PlayerAvatar } from "@/components/shared/player-avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Loader2, ArrowLeft, Calendar, Users } from "lucide-react";
@@ -108,20 +108,14 @@ export function PlayerAdminCard({ player: initialPlayer }: PlayerAdminCardProps)
 
         {/* Avatar + Status */}
         <div className="flex flex-col items-center gap-5 px-6 py-8">
-          <div className="relative h-28 w-28 overflow-hidden rounded-full border-2 border-white/10 bg-white/5">
-            {player.avatar_url ? (
-              <Image
-                src={player.avatar_url}
-                alt={player.full_name}
-                fill
-                className="object-cover"
-                sizes="112px"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white/20">
-                {player.full_name.charAt(0)}
-              </div>
-            )}
+          <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-white/10 bg-white/5">
+            <PlayerAvatar
+              src={player.avatar_url}
+              alt={player.full_name}
+              size={112}
+              className="h-full w-full rounded-full"
+              fallbackClass="text-3xl font-bold text-white/20"
+            />
           </div>
 
           <Badge

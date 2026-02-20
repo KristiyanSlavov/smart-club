@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { ClubLogo } from "./club-logo";
+import { PlayerAvatar } from "./player-avatar";
 import type { PlayerStatus } from "@/types/database";
 
 function formatDate(isoDate: string): string {
@@ -89,11 +89,13 @@ export function ClubCard({
           {/* LEFT — Club emblem */}
           <div className="h-14 w-14 shrink-0">
             {emblemUrl ? (
-              <Image
+              <img
                 src={emblemUrl}
                 alt={clubName}
                 width={56}
                 height={56}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-contain"
               />
             ) : (
@@ -141,20 +143,14 @@ export function ClubCard({
         {/* ══════ CENTRAL BLOCK: Photo + Info ══════ */}
         <div className="flex flex-col items-center">
           {/* Player photo */}
-          <div className="relative h-44 w-36 sm:h-52 sm:w-40 overflow-hidden rounded-xl border-2 border-[#32cd32]/20 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt={playerName}
-                fill
-                className="object-cover"
-                sizes="160px"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-white/[0.03] text-5xl">
-                👤
-              </div>
-            )}
+          <div className="relative aspect-[9/11] w-36 sm:w-40 overflow-hidden rounded-xl border-2 border-[#32cd32]/20 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
+            <PlayerAvatar
+              src={avatarUrl}
+              alt={playerName}
+              size={160}
+              className="h-full w-full rounded-xl"
+              fallbackClass="text-5xl text-white/20"
+            />
           </div>
 
           {/* ── Neon divider ── */}
