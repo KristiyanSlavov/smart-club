@@ -92,10 +92,10 @@ export function PlayerAdminCard({ player: initialPlayer }: PlayerAdminCardProps)
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-5">
           <div>
             <h1 className="text-xl font-bold text-white">{player.full_name}</h1>
-            {player.team_group && (
+            {player.team_group != null && (
               <div className="mt-1 flex items-center gap-1.5 text-sm text-white/40">
                 <Users className="h-3.5 w-3.5" />
-                {player.team_group}
+                Набор {player.team_group}
               </div>
             )}
           </div>

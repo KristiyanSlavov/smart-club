@@ -16,7 +16,7 @@ export interface Player {
   status: PlayerStatus;
   jersey_number: string | null;
   birth_date: string | null;
-  team_group: string | null;
+  team_group: number | null;
   last_payment_date: string | null;
   avatar_url: string | null;
   created_at: string;

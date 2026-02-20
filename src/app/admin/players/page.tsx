@@ -20,13 +20,13 @@ export default async function PlayersPage() {
     .from("players")
     .select("team_group")
     .not("team_group", "is", null)
-    .order("team_group");
+    .order("team_group", { ascending: false });
 
   const groups = [
     ...new Set(
       (groupRows ?? [])
-        .map((r) => r.team_group as string)
-        .filter(Boolean)
+        .map((r) => r.team_group as number)
+        .filter((g): g is number => g !== null)
     ),
   ];
 

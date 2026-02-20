@@ -30,7 +30,7 @@ const MIN_SEARCH_LENGTH = 2;
 
 interface PlayersListDashboardProps {
   players: Player[];
-  groups: string[];
+  groups: number[];
 }
 
 export function PlayersListDashboard({
@@ -38,7 +38,7 @@ export function PlayersListDashboard({
   groups,
 }: PlayersListDashboardProps) {
   const [search, setSearch] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [groupFilter, setGroupFilter] = useState<number | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [optimisticPlayers, setOptimisticPlayers] = useState(players);
 
@@ -58,7 +58,7 @@ export function PlayersListDashboard({
       })
     : [];
 
-  function handleGroupToggle(group: string) {
+  function handleGroupToggle(group: number) {
     setGroupFilter((prev) => (prev === group ? null : group));
   }
 
