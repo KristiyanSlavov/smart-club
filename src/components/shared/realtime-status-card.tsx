@@ -12,7 +12,7 @@ interface RealtimeStatusCardProps {
   initialStatus: PlayerStatus;
   jerseyNumber: string | null;
   birthDate: string | null;
-  teamGroup: string | null;
+  teamGroup: number | null;
   lastPaymentDate: string | null;
   avatarUrl: string | null;
   emblemUrl: string | null;

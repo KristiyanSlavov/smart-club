@@ -31,7 +31,7 @@ interface ClubCardProps {
   status: PlayerStatus;
   jerseyNumber: string | null;
   birthDate: string | null;
-  teamGroup: string | null;
+  teamGroup: number | null;
   lastPaymentDate: string | null;
   avatarUrl: string | null;
   emblemUrl: string | null;
@@ -177,7 +177,7 @@ export function ClubCard({
             )}
 
             {/* 3. Набор */}
-            {teamGroup && (
+            {teamGroup != null && (
               <div className="flex justify-between text-sm sm:text-base">
                 <span className="font-semibold text-white/50">Набор:</span>
                 <span className="font-bold text-[#32cd32]">{teamGroup}</span>
