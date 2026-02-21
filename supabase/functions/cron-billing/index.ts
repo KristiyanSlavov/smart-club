@@ -190,29 +190,69 @@ Deno.serve(async (req) => {
   }
 
   // ── overdue_1st ───────────────────────────────────────────────────────
-  // Rule B first: warning → overdue (they owe two fees)
-  // Rule A second: paid → warning (new month, new fee due)
   if (type === "overdue_1st") {
-    // ── Rule B: warning → overdue ──
-    const { data: warningPlayers, error: wErr } = await supabase
-      .from("players")
-      .select("id, full_name, nfc_tag_id")
-      .eq("status", "warning");
+    if (isDemo) {
+      // ── Demo mode: only notify players already marked 'overdue' ──
+      const { data: overduePlayers, error: oErr } = await supabase
+        .from("players")
+        .select("id, full_name, nfc_tag_id")
+        .eq("status", "overdue");
 
-    if (wErr) {
-      console.error("[cron] Warning query error:", wErr.message);
-    }
+      if (oErr) {
+        console.error("[cron] Overdue query error:", oErr.message);
+      }
 
-    const toOverdue = warningPlayers ?? [];
-    console.log(
-      `[cron] Rule B: ${toOverdue.length} player(s) to mark as overdue (warning → overdue)`
-    );
-    toOverdue.forEach((p) =>
-      console.log(`[cron]   - ${p.full_name} (warning → overdue)`)
-    );
+      const targets = overduePlayers ?? [];
+      console.log(
+        `[cron] DEMO: Found ${targets.length} player(s) with status=overdue`
+      );
+      targets.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (already overdue)`)
+      );
 
-    if (toOverdue.length > 0) {
-      if (!isDemo) {
+      if (targets.length > 0) {
+        await Promise.allSettled(
+          targets.map((p) =>
+            sendPushToPlayer(
+              p.id,
+              p.full_name,
+              {
+                title: "Smart Club",
+                body: "Просрочено плащане! Дължите две такси.",
+                url: `${APP_URL}/p/${p.nfc_tag_id}`,
+              },
+              isDemo
+            )
+          )
+        );
+
+        actions.push(
+          `Demo: Sent overdue alerts to ${targets.length} overdue players only`
+        );
+      } else {
+        actions.push("Demo: No players with status=overdue to notify");
+      }
+    } else {
+      // ── Production mode ──
+      // Rule B first: warning → overdue (they owe two fees)
+      const { data: warningPlayers, error: wErr } = await supabase
+        .from("players")
+        .select("id, full_name, nfc_tag_id")
+        .eq("status", "warning");
+
+      if (wErr) {
+        console.error("[cron] Warning query error:", wErr.message);
+      }
+
+      const toOverdue = warningPlayers ?? [];
+      console.log(
+        `[cron] Rule B: ${toOverdue.length} player(s) to mark as overdue (warning → overdue)`
+      );
+      toOverdue.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (warning → overdue)`)
+      );
+
+      if (toOverdue.length > 0) {
         const { error: updateErr } = await supabase
           .from("players")
           .update({ status: "overdue" })
@@ -221,50 +261,46 @@ Deno.serve(async (req) => {
         if (updateErr) {
           console.error("[cron] Failed to mark overdue:", updateErr.message);
         }
-      } else {
-        console.log("[cron] DEMO MODE: skipping status update (warning → overdue)");
+
+        await Promise.allSettled(
+          toOverdue.map((p) =>
+            sendPushToPlayer(
+              p.id,
+              p.full_name,
+              {
+                title: "Smart Club",
+                body: "Просрочено плащане! Дължите две такси.",
+                url: `${APP_URL}/p/${p.nfc_tag_id}`,
+              },
+              isDemo
+            )
+          )
+        );
+
+        actions.push(
+          `Marked ${toOverdue.length} player(s) as overdue`
+        );
       }
 
-      await Promise.allSettled(
-        toOverdue.map((p) =>
-          sendPushToPlayer(
-            p.id,
-            p.full_name,
-            {
-              title: "Smart Club",
-              body: "Просрочено плащане! Моля, свържете се с треньора.",
-              url: `${APP_URL}/p/${p.nfc_tag_id}`,
-            },
-            isDemo
-          )
-        )
+      // Rule A second: paid → warning (new month, new fee due)
+      const { data: paidPlayers, error: pErr } = await supabase
+        .from("players")
+        .select("id, full_name")
+        .eq("status", "paid");
+
+      if (pErr) {
+        console.error("[cron] Paid query error:", pErr.message);
+      }
+
+      const toWarning = paidPlayers ?? [];
+      console.log(
+        `[cron] Rule A: ${toWarning.length} player(s) to reset (paid → warning)`
+      );
+      toWarning.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (paid → warning)`)
       );
 
-      actions.push(
-        `Marked ${toOverdue.length} player(s) as overdue${isDemo ? " (demo — no DB write)" : ""}`
-      );
-    }
-
-    // ── Rule A: paid → warning ──
-    const { data: paidPlayers, error: pErr } = await supabase
-      .from("players")
-      .select("id, full_name")
-      .eq("status", "paid");
-
-    if (pErr) {
-      console.error("[cron] Paid query error:", pErr.message);
-    }
-
-    const toWarning = paidPlayers ?? [];
-    console.log(
-      `[cron] Rule A: ${toWarning.length} player(s) to reset (paid → warning)`
-    );
-    toWarning.forEach((p) =>
-      console.log(`[cron]   - ${p.full_name} (paid → warning)`)
-    );
-
-    if (toWarning.length > 0) {
-      if (!isDemo) {
+      if (toWarning.length > 0) {
         const { error: resetErr } = await supabase
           .from("players")
           .update({ status: "warning" })
@@ -273,17 +309,15 @@ Deno.serve(async (req) => {
         if (resetErr) {
           console.error("[cron] Failed to reset to warning:", resetErr.message);
         }
-      } else {
-        console.log("[cron] DEMO MODE: skipping status update (paid → warning)");
+
+        actions.push(
+          `Reset ${toWarning.length} paid player(s) to warning`
+        );
       }
 
-      actions.push(
-        `Reset ${toWarning.length} paid player(s) to warning${isDemo ? " (demo — no DB write)" : ""}`
-      );
-    }
-
-    if (toOverdue.length === 0 && toWarning.length === 0) {
-      actions.push("No status changes needed");
+      if (toOverdue.length === 0 && toWarning.length === 0) {
+        actions.push("No status changes needed");
+      }
     }
   }
 
