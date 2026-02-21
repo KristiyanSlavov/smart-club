@@ -24,7 +24,7 @@ export function DemoActions() {
       const res = await fetch("/api/debug/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, isDemo: true }),
       });
 
       const data = await res.json();

@@ -9,47 +9,51 @@ const supabase = createClient(
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 
-console.log("[cron] VAPID_PUBLIC_KEY present:", !!VAPID_PUBLIC_KEY);
-console.log("[cron] VAPID_PRIVATE_KEY present:", !!VAPID_PRIVATE_KEY);
-
 webPush.setVapidDetails(
   "mailto:noreply@smartclub.app",
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );
 
-const APP_URL = Deno.env.get("APP_URL") ?? "https://smart-club-henna.vercel.app";
+const APP_URL =
+  Deno.env.get("APP_URL") ?? "https://smart-club-henna.vercel.app";
+
+// ── Push helper ─────────────────────────────────────────────────────────────
 
 async function sendPushToPlayer(
   playerId: string,
   playerName: string,
-  payload: { title: string; body: string; url?: string }
+  payload: { title: string; body: string; url?: string },
+  isDemo: boolean
 ): Promise<{ sent: number; failed: number; noSubs: boolean }> {
-  console.log(`[cron] Looking up push_subscriptions for player: ${playerName} (${playerId})`);
-
   const { data: subscriptions, error: subError } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .eq("player_id", playerId);
 
   if (subError) {
-    console.error(`[cron] DB error fetching subscriptions for ${playerName}:`, subError.message);
+    console.error(
+      `[cron] DB error fetching subscriptions for ${playerName}:`,
+      subError.message
+    );
     return { sent: 0, failed: 0, noSubs: true };
   }
 
   if (!subscriptions || subscriptions.length === 0) {
-    console.warn(`[cron] No push subscriptions found for player: ${playerName} (${playerId})`);
+    console.warn(`[cron] No subscriptions for ${playerName}`);
     return { sent: 0, failed: 0, noSubs: true };
   }
 
-  // Deduplicate by endpoint — keep only the latest row per endpoint
-  const seen = new Map<string, typeof subscriptions[number]>();
+  // Deduplicate by endpoint
+  const seen = new Map<string, (typeof subscriptions)[number]>();
   for (const sub of subscriptions) {
     seen.set(sub.endpoint, sub);
   }
   const uniqueSubs = [...seen.values()];
 
-  console.log(`[cron] Found ${subscriptions.length} row(s), ${uniqueSubs.length} unique endpoint(s) for ${playerName}`);
+  console.log(
+    `[cron] ${uniqueSubs.length} endpoint(s) for ${playerName}`
+  );
 
   const message = JSON.stringify(payload);
   let sent = 0;
@@ -57,7 +61,6 @@ async function sendPushToPlayer(
   const expiredIds: string[] = [];
 
   for (const sub of uniqueSubs) {
-    console.log(`[cron] Attempting to send push to ${playerName}, endpoint: ${sub.endpoint.slice(0, 60)}...`);
     try {
       await webPush.sendNotification(
         {
@@ -67,16 +70,12 @@ async function sendPushToPlayer(
         message
       );
       sent++;
-      console.log(`[cron] Push sent successfully to ${playerName}`);
+      console.log(`[cron] ✅ Push sent to ${playerName}`);
     } catch (err: unknown) {
       failed++;
       const statusCode = (err as { statusCode?: number })?.statusCode;
-      const errBody = (err as { body?: string })?.body;
       console.error(
-        `[cron] Push FAILED for ${playerName} (${playerId}):`,
-        `statusCode=${statusCode}`,
-        `body=${errBody}`,
-        err
+        `[cron] ❌ Push failed for ${playerName}: status=${statusCode}`
       );
       if (statusCode === 410) {
         expiredIds.push(sub.id);
@@ -84,8 +83,11 @@ async function sendPushToPlayer(
     }
   }
 
-  if (expiredIds.length > 0) {
-    console.log(`[cron] Cleaning up ${expiredIds.length} expired subscription(s) for ${playerName}`);
+  // Clean up expired subscriptions (skip in demo mode)
+  if (expiredIds.length > 0 && !isDemo) {
+    console.log(
+      `[cron] Cleaning ${expiredIds.length} expired sub(s) for ${playerName}`
+    );
     await supabase
       .from("push_subscriptions")
       .delete()
@@ -95,10 +97,16 @@ async function sendPushToPlayer(
   return { sent, failed, noSubs: false };
 }
 
+// ── Type resolution ─────────────────────────────────────────────────────────
+
 type CronType = "reminder_25" | "reminder_29" | "overdue_1st";
 
 function resolveType(body: { type?: string }): CronType | null {
-  if (body.type === "reminder_25" || body.type === "reminder_29" || body.type === "overdue_1st") {
+  if (
+    body.type === "reminder_25" ||
+    body.type === "reminder_29" ||
+    body.type === "overdue_1st"
+  ) {
     return body.type;
   }
 
@@ -110,168 +118,217 @@ function resolveType(body: { type?: string }): CronType | null {
   return null;
 }
 
+// ── Main handler ────────────────────────────────────────────────────────────
+
 Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (authHeader !== `Bearer ${Deno.env.get("SERVICE_ROLE_KEY")}`) {
-    console.error("[cron] Unauthorized request");
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let body: { type?: string } = {};
+  let body: { type?: string; isDemo?: boolean } = {};
   try {
     body = await req.json();
   } catch {
-    // Empty or invalid body — fall back to date-based resolution
+    // Empty body — fall back to date-based resolution
   }
 
   const type = resolveType(body);
-  console.log("[cron] ===== Processing type:", type, "=====");
+  const isDemo = body.isDemo === true;
 
-  // Diagnostic: check if push_subscriptions table has any rows at all
-  const { count, error: countError } = await supabase
-    .from("push_subscriptions")
-    .select("*", { count: "exact", head: true });
-  if (countError) {
-    console.error("[cron] Failed to count push_subscriptions:", countError.message);
-  } else {
-    console.log(`[cron] Total rows in push_subscriptions table: ${count}`);
-  }
+  console.log(
+    `[cron] ===== type=${type} isDemo=${isDemo} =====`
+  );
 
   const actions: string[] = [];
 
-  if (type === "reminder_25") {
-    const { data: players, error: playersErr } = await supabase
+  // ── reminder_25 / reminder_29 ─────────────────────────────────────────
+  // Rule C: Only notify players whose status is 'warning'
+  if (type === "reminder_25" || type === "reminder_29") {
+    const { data: warningPlayers, error: wErr } = await supabase
       .from("players")
-      .select("id, full_name, nfc_tag_id, status")
-      .neq("status", "paid");
+      .select("id, full_name, nfc_tag_id")
+      .eq("status", "warning");
 
-    console.log(`[cron] Found ${players?.length ?? 0} player(s) with unpaid status`);
-    if (playersErr) console.error("[cron] Players query error:", playersErr.message);
+    if (wErr) {
+      console.error("[cron] Query error:", wErr.message);
+    }
 
-    if (players && players.length > 0) {
-      players.forEach((p) => console.log(`[cron]   - ${p.full_name} (status: ${p.status})`));
+    const players = warningPlayers ?? [];
+    console.log(
+      `[cron] Found ${players.length} player(s) with status=warning`
+    );
+    players.forEach((p) => console.log(`[cron]   - ${p.full_name}`));
 
-      const results = await Promise.allSettled(
-        players.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
-          sendPushToPlayer(p.id, p.full_name, {
-            title: "Smart Club",
-            body: "Напомняне: Моля, платете месечната такса до края на месеца.",
-            url: `${APP_URL}/p/${p.nfc_tag_id}`,
-          })
+    if (players.length > 0) {
+      const pushBody =
+        type === "reminder_25"
+          ? "Напомняне: Моля, платете месечната такса до края на месеца."
+          : "Последно напомняне: Месечната такса все още не е платена.";
+
+      await Promise.allSettled(
+        players.map((p) =>
+          sendPushToPlayer(
+            p.id,
+            p.full_name,
+            {
+              title: "Smart Club",
+              body: pushBody,
+              url: `${APP_URL}/p/${p.nfc_tag_id}`,
+            },
+            isDemo
+          )
         )
       );
-      const summary = results.map((r) => r.status === "fulfilled" ? r.value : { error: r.reason });
-      console.log("[cron] Push results:", JSON.stringify(summary));
-      actions.push(`Sent reminder to ${players.length} player(s)`);
+
+      const label =
+        type === "reminder_25" ? "reminder" : "last reminder";
+      actions.push(`Sent ${label} to ${players.length} player(s)`);
+    } else {
+      actions.push("No players with status=warning to notify");
     }
-  } else if (type === "reminder_29") {
-    const { data: players, error: playersErr } = await supabase
-      .from("players")
-      .select("id, full_name, nfc_tag_id, status")
-      .neq("status", "paid");
+  }
 
-    console.log(`[cron] Found ${players?.length ?? 0} player(s) with unpaid status`);
-    if (playersErr) console.error("[cron] Players query error:", playersErr.message);
-
-    if (players && players.length > 0) {
-      players.forEach((p) => console.log(`[cron]   - ${p.full_name} (status: ${p.status})`));
-
-      const results = await Promise.allSettled(
-        players.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
-          sendPushToPlayer(p.id, p.full_name, {
-            title: "Smart Club",
-            body: "Последно напомняне: Месечната такса все още не е платена.",
-            url: `${APP_URL}/p/${p.nfc_tag_id}`,
-          })
-        )
-      );
-      const summary = results.map((r) => r.status === "fulfilled" ? r.value : { error: r.reason });
-      console.log("[cron] Push results:", JSON.stringify(summary));
-      actions.push(`Sent last reminder to ${players.length} player(s)`);
-    }
-  } else if (type === "overdue_1st") {
-    // Mark unpaid players as overdue
-    const { data: unpaid, error: unpaidErr } = await supabase
-      .from("players")
-      .select("id, full_name, nfc_tag_id, status")
-      .neq("status", "paid");
-
-    console.log(`[cron] Found ${unpaid?.length ?? 0} player(s) with unpaid status (for overdue)`);
-    if (unpaidErr) console.error("[cron] Unpaid query error:", unpaidErr.message);
-
-    if (unpaid && unpaid.length > 0) {
-      unpaid.forEach((p) => console.log(`[cron]   - ${p.full_name} (status: ${p.status})`));
-
-      const { error: updateErr } = await supabase
+  // ── overdue_1st ───────────────────────────────────────────────────────
+  if (type === "overdue_1st") {
+    if (isDemo) {
+      // ── Demo mode: only notify players already marked 'overdue' ──
+      const { data: overduePlayers, error: oErr } = await supabase
         .from("players")
-        .update({ status: "overdue" })
-        .neq("status", "paid");
+        .select("id, full_name, nfc_tag_id")
+        .eq("status", "overdue");
 
-      if (updateErr) {
-        console.error("[cron] Failed to update players to overdue:", updateErr.message);
-      } else {
-        console.log(`[cron] Updated ${unpaid.length} player(s) to overdue`);
+      if (oErr) {
+        console.error("[cron] Overdue query error:", oErr.message);
       }
 
-      const results = await Promise.allSettled(
-        unpaid.map((p: { id: string; full_name: string; nfc_tag_id: string }) =>
-          sendPushToPlayer(p.id, p.full_name, {
-            title: "Smart Club",
-            body: "Просрочено плащане! Дължите две такси.",
-            url: `${APP_URL}/p/${p.nfc_tag_id}`,
-          })
-        )
+      const targets = overduePlayers ?? [];
+      console.log(
+        `[cron] DEMO: Found ${targets.length} player(s) with status=overdue`
       );
-      const summary = results.map((r) => r.status === "fulfilled" ? r.value : { error: r.reason });
-      console.log("[cron] Push results (overdue):", JSON.stringify(summary));
-      actions.push(`Marked ${unpaid.length} player(s) as overdue`);
-    }
+      targets.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (already overdue)`)
+      );
 
-    // Reset paid players to warning (new billing cycle)
-    const { data: paid, error: paidErr } = await supabase
-      .from("players")
-      .select("id, full_name")
-      .eq("status", "paid");
+      if (targets.length > 0) {
+        await Promise.allSettled(
+          targets.map((p) =>
+            sendPushToPlayer(
+              p.id,
+              p.full_name,
+              {
+                title: "Smart Club",
+                body: "Просрочено плащане! Дължите две такси.",
+                url: `${APP_URL}/p/${p.nfc_tag_id}`,
+              },
+              isDemo
+            )
+          )
+        );
 
-    console.log(`[cron] Found ${paid?.length ?? 0} paid player(s) to reset to warning`);
-    if (paidErr) console.error("[cron] Paid query error:", paidErr.message);
-
-    if (paid && paid.length > 0) {
-      paid.forEach((p) => console.log(`[cron]   - ${p.full_name} (resetting to warning)`));
-
-      const { error: resetErr } = await supabase
+        actions.push(
+          `Demo: Sent overdue alerts to ${targets.length} overdue players only`
+        );
+      } else {
+        actions.push("Demo: No players with status=overdue to notify");
+      }
+    } else {
+      // ── Production mode ──
+      // Rule B first: warning → overdue (they owe two fees)
+      const { data: warningPlayers, error: wErr } = await supabase
         .from("players")
-        .update({ status: "warning" })
+        .select("id, full_name, nfc_tag_id")
+        .eq("status", "warning");
+
+      if (wErr) {
+        console.error("[cron] Warning query error:", wErr.message);
+      }
+
+      const toOverdue = warningPlayers ?? [];
+      console.log(
+        `[cron] Rule B: ${toOverdue.length} player(s) to mark as overdue (warning → overdue)`
+      );
+      toOverdue.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (warning → overdue)`)
+      );
+
+      if (toOverdue.length > 0) {
+        const { error: updateErr } = await supabase
+          .from("players")
+          .update({ status: "overdue" })
+          .eq("status", "warning");
+
+        if (updateErr) {
+          console.error("[cron] Failed to mark overdue:", updateErr.message);
+        }
+
+        await Promise.allSettled(
+          toOverdue.map((p) =>
+            sendPushToPlayer(
+              p.id,
+              p.full_name,
+              {
+                title: "Smart Club",
+                body: "Просрочено плащане! Дължите две такси.",
+                url: `${APP_URL}/p/${p.nfc_tag_id}`,
+              },
+              isDemo
+            )
+          )
+        );
+
+        actions.push(
+          `Marked ${toOverdue.length} player(s) as overdue`
+        );
+      }
+
+      // Rule A second: paid → warning (new month, new fee due)
+      const { data: paidPlayers, error: pErr } = await supabase
+        .from("players")
+        .select("id, full_name")
         .eq("status", "paid");
 
-      if (resetErr) {
-        console.error("[cron] Failed to reset paid players to warning:", resetErr.message);
-      } else {
-        console.log(`[cron] Reset ${paid.length} paid player(s) to warning`);
+      if (pErr) {
+        console.error("[cron] Paid query error:", pErr.message);
       }
 
-      actions.push(`Reset ${paid.length} paid player(s) to warning`);
+      const toWarning = paidPlayers ?? [];
+      console.log(
+        `[cron] Rule A: ${toWarning.length} player(s) to reset (paid → warning)`
+      );
+      toWarning.forEach((p) =>
+        console.log(`[cron]   - ${p.full_name} (paid → warning)`)
+      );
+
+      if (toWarning.length > 0) {
+        const { error: resetErr } = await supabase
+          .from("players")
+          .update({ status: "warning" })
+          .eq("status", "paid");
+
+        if (resetErr) {
+          console.error("[cron] Failed to reset to warning:", resetErr.message);
+        }
+
+        actions.push(
+          `Reset ${toWarning.length} paid player(s) to warning`
+        );
+      }
+
+      if (toOverdue.length === 0 && toWarning.length === 0) {
+        actions.push("No status changes needed");
+      }
     }
-  } else {
-    console.log(`[cron] No action for today — type resolved to null (day ${new Date().getUTCDate()})`);
-    actions.push(`No action — type resolved to null (day ${new Date().getUTCDate()})`);
   }
 
-  // Diagnostic: cross-check player_id FK linkage
-  const { data: orphans, error: orphanErr } = await supabase
-    .from("push_subscriptions")
-    .select("id, player_id")
-    .not("player_id", "in", `(${(await supabase.from("players").select("id")).data?.map((p: { id: string }) => p.id).join(",") ?? ""})`);
-
-  if (orphanErr) {
-    console.error("[cron] Orphan check error:", orphanErr.message);
-  } else if (orphans && orphans.length > 0) {
-    console.error(`[cron] WARNING: ${orphans.length} push_subscription(s) with player_id not matching any player:`, orphans);
-  } else {
-    console.log("[cron] FK check passed: all push_subscriptions.player_id values match a player");
+  // ── No matching type ──────────────────────────────────────────────────
+  if (!type) {
+    actions.push(
+      `No action — day ${new Date().getUTCDate()} has no scheduled task`
+    );
   }
 
-  const response = { ok: true, type, actions };
+  const response = { ok: true, type, isDemo, actions };
   console.log("[cron] ===== Done =====", JSON.stringify(response));
 
   return new Response(JSON.stringify(response), {

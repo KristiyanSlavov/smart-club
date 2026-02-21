@@ -5,7 +5,7 @@ const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY!;
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const type = body.type;
+  const { type, isDemo } = body;
 
   if (!["reminder_25", "reminder_29", "overdue_1st"].includes(type)) {
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     },
-    body: JSON.stringify({ type }),
+    body: JSON.stringify({ type, isDemo: isDemo === true }),
   });
 
   const data = await res.json();
