@@ -1,15 +1,75 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { subscribeToPush } from "@/lib/push";
+import { subscribeToPush, isIOS, isStandalone } from "@/lib/push";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, BellOff, Loader2 } from "lucide-react";
+import { Bell, Check, BellOff, Loader2, Share, Plus, X } from "lucide-react";
 
-type State = "idle" | "loading" | "subscribed" | "denied";
+type State =
+  | "idle"
+  | "loading"
+  | "subscribed"
+  | "denied"
+  | "ios-install"
+  | "unsupported";
 
 interface EnableNotificationsButtonProps {
   playerId: string;
 }
+
+// ── iOS "Add to Home Screen" guide ──────────────────────────────────────────
+
+function IOSInstallGuide({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="relative rounded-xl border border-[#32cd32]/20 bg-[#1a1a1a] p-4">
+      <button
+        onClick={onClose}
+        className="absolute right-3 top-3 text-white/40 hover:text-white/70 transition-colors"
+        aria-label="Затвори"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      <p className="mb-3 text-sm font-semibold text-white">
+        Как да активирате известия на iPhone:
+      </p>
+
+      <ol className="space-y-3 text-sm text-white/70">
+        <li className="flex items-start gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#32cd32]/20 text-xs font-bold text-[#32cd32]">
+            1
+          </span>
+          <span>
+            Натиснете бутона{" "}
+            <Share className="inline h-4 w-4 text-[#007AFF] align-text-bottom" />{" "}
+            <strong className="text-white">Share</strong> в долната лента на Safari
+          </span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#32cd32]/20 text-xs font-bold text-[#32cd32]">
+            2
+          </span>
+          <span>
+            Превъртете надолу и изберете{" "}
+            <Plus className="inline h-4 w-4 text-white align-text-bottom" />{" "}
+            <strong className="text-white">&ldquo;Добавяне към начален екран&rdquo;</strong>
+          </span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#32cd32]/20 text-xs font-bold text-[#32cd32]">
+            3
+          </span>
+          <span>
+            Отворете приложението от началния екран и натиснете{" "}
+            <strong className="text-white">&ldquo;Активиране на известия&rdquo;</strong>
+          </span>
+        </li>
+      </ol>
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
 
 export function EnableNotificationsButton({
   playerId,
@@ -17,6 +77,7 @@ export function EnableNotificationsButton({
   const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<State>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
   const subscribingRef = useRef(false);
 
   async function doSubscribe() {
@@ -51,7 +112,17 @@ export function EnableNotificationsButton({
   useEffect(() => {
     setMounted(true);
 
-    if (!("Notification" in window)) return;
+    // iOS + not installed as PWA → show installation guide
+    if (isIOS() && !isStandalone()) {
+      setState("ios-install");
+      return;
+    }
+
+    // Browser doesn't support push at all (non-iOS)
+    if (!("Notification" in window) || !("PushManager" in window)) {
+      setState("unsupported");
+      return;
+    }
 
     if (Notification.permission === "denied") {
       setState("denied");
@@ -77,6 +148,42 @@ export function EnableNotificationsButton({
     );
   }
 
+  // ── iOS: not installed as PWA ──
+  if (state === "ios-install") {
+    return (
+      <div className="flex flex-col gap-2">
+        <Button
+          onClick={() => setShowGuide((v) => !v)}
+          className="w-full gap-2 bg-[#007AFF]/20 text-[#4da3ff] hover:bg-[#007AFF]/30 border border-[#007AFF]/30"
+        >
+          <Share className="h-4 w-4" />
+          Добавете към начален екран
+        </Button>
+        <p className="text-center text-xs text-white/40">
+          За да активирате известията на iPhone, натиснете бутона Share и
+          изберете &ldquo;Добавяне към начален екран&rdquo;.
+        </p>
+        {showGuide && (
+          <IOSInstallGuide onClose={() => setShowGuide(false)} />
+        )}
+      </div>
+    );
+  }
+
+  // ── Browser doesn't support push ──
+  if (state === "unsupported") {
+    return (
+      <Button
+        disabled
+        className="w-full gap-2 bg-white/5 text-white/30 border border-white/10"
+      >
+        <BellOff className="h-4 w-4" />
+        Известията не се поддържат
+      </Button>
+    );
+  }
+
+  // ── Successfully subscribed ──
   if (state === "subscribed") {
     return (
       <Button
@@ -89,6 +196,7 @@ export function EnableNotificationsButton({
     );
   }
 
+  // ── Permission denied or error ──
   if (state === "denied") {
     return (
       <div className="flex flex-col gap-1.5">
@@ -106,6 +214,7 @@ export function EnableNotificationsButton({
     );
   }
 
+  // ── Default: idle / loading — button triggers permission via user gesture ──
   return (
     <Button
       onClick={doSubscribe}
