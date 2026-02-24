@@ -35,3 +35,11 @@ export interface PushSubscription {
   auth: string;
   created_at: string;
 }
+
+export interface PaymentLog {
+  id: string;
+  player_id: string;
+  paid_for: string;
+  paid_at: string;
+  recorded_by: string;
+}
