@@ -155,7 +155,7 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Print styles — only show the receipt card */
+/* Print styles — only show the receipt card OR report area */
 @media print {
   body * {
     visibility: hidden;
@@ -174,5 +174,32 @@
   /* Hide the footer buttons when printing */
   #receipt-print-area button {
     display: none;
+  }
+  #report-print-area,
+  #report-print-area * {
+    visibility: visible !important;
+    display: block;
+  }
+  #report-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #report-print-area table {
+    display: table;
+  }
+  #report-print-area thead {
+    display: table-header-group;
+  }
+  #report-print-area tbody {
+    display: table-row-group;
+  }
+  #report-print-area tr {
+    display: table-row;
+  }
+  #report-print-area th,
+  #report-print-area td {
+    display: table-cell;
   }
 }

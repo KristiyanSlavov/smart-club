@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToPlayer } from "@/actions/notifications";
+import { BG_MONTHS } from "@/lib/constants";
 import type { PlayerStatus } from "@/types/database";
 
 export async function updatePlayerStatus(
@@ -65,11 +66,6 @@ export async function createPlayer(data: {
   revalidatePath("/admin");
   return { success: true };
 }
-
-const BG_MONTHS = [
-  "Януари", "Февруари", "Март", "Април", "Май", "Юни",
-  "Юли", "Август", "Септември", "Октомври", "Ноември", "Декември",
-];
 
 export async function markPlayerPaid(playerId: string, playerName: string) {
   const supabase = await createClient();

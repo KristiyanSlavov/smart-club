@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PlayersListDashboard } from "./players-list";
+import { ReportsCenter } from "./reports-center";
 import { DemoActions } from "./demo-actions";
 import type { Player } from "@/types/database";
 
@@ -40,6 +41,10 @@ export default async function PlayersPage() {
         <p className="mb-8 text-sm text-white/50">
           Търсене, филтриране и ръчно отбелязване на плащания
         </p>
+        <ReportsCenter
+          players={(players as Player[]) ?? []}
+          groups={groups}
+        />
         <DemoActions />
         <PlayersListDashboard
           players={(players as Player[]) ?? []}
