@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SmartRedirect } from "@/components/shared/smart-redirect";
 import { RealtimeStatusCard } from "@/components/shared/realtime-status-card";
 import { EnableNotificationsButton } from "@/components/shared/enable-notifications-button";
-import type { PlayerWithClub } from "@/types/database";
+import { PaymentHistory } from "@/components/shared/payment-history";
+import type { PlayerWithClub, PaymentLog } from "@/types/database";
 import type { Metadata } from "next";
 
 interface Props {
@@ -46,6 +47,12 @@ export default async function ProfilePage({ params }: Props) {
     notFound();
   }
 
+  const { data: payments } = await supabase
+    .from("payment_logs")
+    .select("id, player_id, paid_for, paid_at, recorded_by")
+    .eq("player_id", player.id)
+    .order("paid_at", { ascending: false });
+
   return (
     <SmartRedirect tagId={tagId}>
       <main className="flex min-h-dvh items-center justify-center bg-[#0a0a0a] p-4">
@@ -68,6 +75,11 @@ export default async function ProfilePage({ params }: Props) {
           <p className="mt-2 text-center text-[10px] text-white/25">
             Получавайте push известия дори когато браузърът е затворен.
           </p>
+          <PaymentHistory
+            payments={(payments as PaymentLog[]) ?? []}
+            playerName={player.full_name}
+            clubName={player.clubs.name}
+          />
         </div>
       </main>
     </SmartRedirect>

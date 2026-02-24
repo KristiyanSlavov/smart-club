@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToPlayer } from "@/actions/notifications";
+import { BG_MONTHS } from "@/lib/constants";
 import type { PlayerStatus } from "@/types/database";
 
 export async function updatePlayerStatus(
@@ -69,17 +70,26 @@ export async function createPlayer(data: {
 export async function markPlayerPaid(playerId: string, playerName: string) {
   const supabase = await createClient();
 
+  const now = new Date();
+
   const { error } = await supabase
     .from("players")
     .update({
       status: "paid" as PlayerStatus,
-      last_payment_date: new Date().toISOString(),
+      last_payment_date: now.toISOString(),
     })
     .eq("id", playerId);
 
   if (error) {
     return { error: error.message };
   }
+
+  // Insert payment log for the receipt history
+  const paidFor = `${BG_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  await supabase.from("payment_logs").insert({
+    player_id: playerId,
+    paid_for: paidFor,
+  });
 
   const { data: player } = await supabase
     .from("players")
@@ -101,6 +111,7 @@ export async function markPlayerPaid(playerId: string, playerName: string) {
   revalidatePath("/admin/players");
   if (player?.nfc_tag_id) {
     revalidatePath(`/admin/${player.nfc_tag_id}`);
+    revalidatePath(`/p/${player.nfc_tag_id}`);
   }
   return { success: true };
 }
