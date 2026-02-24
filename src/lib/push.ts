@@ -12,6 +12,22 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return output;
 }
 
+/** True when running on an iPhone / iPad / iPod (any browser). */
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** True when the page is running inside an installed PWA (standalone). */
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
+
 export async function subscribeToPush(
   playerId: string
 ): Promise<{ ok: boolean; error?: string }> {
@@ -31,7 +47,9 @@ export async function subscribeToPush(
   }
 
   console.log("[push] Registering service worker...");
-  const registration = await navigator.serviceWorker.register("/sw.js");
+  const registration = await navigator.serviceWorker.register("/sw.js", {
+    scope: "/",
+  });
   await navigator.serviceWorker.ready;
   console.log("[push] Service worker ready.");
 
