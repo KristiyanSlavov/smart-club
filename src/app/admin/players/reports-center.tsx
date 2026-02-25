@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,10 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
     "none" | "monthly" | "annual"
   >("none");
   const [loadingAnnual, setLoadingAnnual] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  /* SSR safety — portal only after hydration */
+  useEffect(() => setMounted(true), []);
 
   /* ── Monthly fetch (dashboard) ── */
   const fetchLogs = useCallback(async () => {
@@ -130,11 +135,19 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
   /* ── Print trigger ── */
   useEffect(() => {
     if (printMode === "none") return;
-    const reset = () => setPrintMode("none");
+    // Add class to body so CSS can hide everything except .print-only-section
+    document.body.classList.add("printing-report");
+    const reset = () => {
+      document.body.classList.remove("printing-report");
+      setPrintMode("none");
+    };
     window.addEventListener("afterprint", reset, { once: true });
-    // rAF ensures the DOM (including dynamic <style> tags) is fully painted
-    requestAnimationFrame(() => window.print());
-    return () => window.removeEventListener("afterprint", reset);
+    // setTimeout gives mobile browsers time to render the portal content
+    const timer = setTimeout(() => window.print(), 350);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("afterprint", reset);
+    };
   }, [printMode]);
 
   /* ── Annual matrix: player_id → Set<monthIndex> ── */
@@ -217,24 +230,358 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
     </tr>
   );
 
+  /* ── Portal-based print content ── */
+  const printPortal =
+    mounted && printMode !== "none"
+      ? createPortal(
+          <>
+            <style
+              dangerouslySetInnerHTML={{
+                __html:
+                  printMode === "monthly"
+                    ? "@page { size: portrait; margin: 15mm; }"
+                    : "@page { size: landscape; margin: 10mm; } .print-only-section { zoom: 0.85; }",
+              }}
+            />
+            <div className="print-only-section">
+              {/* Monthly report */}
+              {printMode === "monthly" && (
+                <div
+                  style={{
+                    fontFamily: "Arial, sans-serif",
+                    color: "#000",
+                    padding: "20px",
+                  }}
+                >
+                  {/* Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "16px",
+                      marginBottom: "24px",
+                    }}
+                  >
+                    <ClubLogo className="w-16 h-20" />
+                    <div>
+                      <h1
+                        style={{
+                          margin: 0,
+                          fontSize: "20px",
+                          fontWeight: 800,
+                        }}
+                      >
+                        ФК ВИХЪР ВОЙВОДИНОВО
+                      </h1>
+                      <h2
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: "16px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ФИНАНСОВ ОТЧЕТ ЗА МЕСЕЦ{" "}
+                        {BG_MONTHS[month].toUpperCase()} {year}
+                      </h2>
+                      {groupFilter !== "all" && (
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            fontSize: "13px",
+                            color: "#555",
+                          }}
+                        >
+                          Набор: {groupFilter}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <p style={{ fontSize: "14px", marginBottom: "16px" }}>
+                    <strong>Платили:</strong> {paidCount} / {total} ({percentage}
+                    %)
+                  </p>
+
+                  {/* Table */}
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "6px 8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          #
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "6px 8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          Име
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "6px 8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          Набор
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "6px 8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          Дата на плащане
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "6px 8px",
+                            textAlign: "left",
+                          }}
+                        >
+                          Статус
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayPlayers.map((player, idx) => {
+                        const isPaid = paidIds.has(player.id);
+                        const paidAt = paidAtMap.get(player.id);
+                        return (
+                          <tr key={player.id}>
+                            <td
+                              style={{
+                                borderBottom: "1px solid #ddd",
+                                padding: "6px 8px",
+                              }}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td
+                              style={{
+                                borderBottom: "1px solid #ddd",
+                                padding: "6px 8px",
+                              }}
+                            >
+                              {player.full_name}
+                            </td>
+                            <td
+                              style={{
+                                borderBottom: "1px solid #ddd",
+                                padding: "6px 8px",
+                              }}
+                            >
+                              {player.team_group ?? "—"}
+                            </td>
+                            <td
+                              style={{
+                                borderBottom: "1px solid #ddd",
+                                padding: "6px 8px",
+                              }}
+                            >
+                              {isPaid && paidAt
+                                ? new Date(paidAt).toLocaleDateString("bg-BG")
+                                : "—"}
+                            </td>
+                            <td
+                              style={{
+                                borderBottom: "1px solid #ddd",
+                                padding: "6px 8px",
+                              }}
+                            >
+                              {isPaid ? "Платено" : "Неплатено"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Footer */}
+                  <p
+                    style={{
+                      marginTop: "24px",
+                      fontSize: "11px",
+                      color: "#888",
+                    }}
+                  >
+                    Генериран на {todayFormatted}
+                  </p>
+                </div>
+              )}
+
+              {/* Annual report (matrix) */}
+              {printMode === "annual" && (
+                <div
+                  style={{
+                    fontFamily: "Arial, sans-serif",
+                    color: "#000",
+                    padding: "10px",
+                  }}
+                >
+                  {/* Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "16px",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <ClubLogo className="w-16 h-20" />
+                    <div>
+                      <h1
+                        style={{
+                          margin: 0,
+                          fontSize: "18px",
+                          fontWeight: 800,
+                        }}
+                      >
+                        ФК ВИХЪР ВОЙВОДИНОВО
+                      </h1>
+                      <h2
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ГОДИШЕН ОТЧЕТ ЗА СЪБИРАЕМОСТ - {year} Г.
+                      </h2>
+                      {groupFilter !== "all" && (
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            fontSize: "12px",
+                            color: "#555",
+                          }}
+                        >
+                          Набор: {groupFilter}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Matrix table */}
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "11px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "4px 6px",
+                            textAlign: "center",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          #
+                        </th>
+                        <th
+                          style={{
+                            borderBottom: "2px solid #000",
+                            padding: "4px 6px",
+                            textAlign: "left",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            minWidth: "120px",
+                          }}
+                        >
+                          Име
+                        </th>
+                        {BG_MONTHS_SHORT.map((m, i) => (
+                          <th
+                            key={i}
+                            style={{
+                              borderBottom: "2px solid #000",
+                              padding: "4px 2px",
+                              textAlign: "center",
+                              fontSize: "10px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {m}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupFilter === "all"
+                        ? annualGroups.map((group) => {
+                            const groupPlayers = annualPlayers.filter(
+                              (p) => p.team_group === group,
+                            );
+                            return (
+                              <Fragment key={`group-${group}`}>
+                                <tr className="group-header">
+                                  <td
+                                    colSpan={14}
+                                    style={{
+                                      background: "#f0f0f0",
+                                      fontWeight: "bold",
+                                      padding: "6px 8px",
+                                      fontSize: "11px",
+                                      borderBottom: "1px solid #ccc",
+                                    }}
+                                  >
+                                    Набор {group ?? "—"}
+                                  </td>
+                                </tr>
+                                {groupPlayers.map((player, idx) =>
+                                  renderAnnualRow(player, idx),
+                                )}
+                              </Fragment>
+                            );
+                          })
+                        : annualPlayers.map((player, idx) =>
+                            renderAnnualRow(player, idx),
+                          )}
+                    </tbody>
+                  </table>
+
+                  {/* Footer */}
+                  <p
+                    style={{
+                      marginTop: "16px",
+                      fontSize: "10px",
+                      color: "#888",
+                    }}
+                  >
+                    Генериран на {todayFormatted}
+                  </p>
+                </div>
+              )}
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
+
   return (
     <>
-      {printMode === "monthly" && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: "@page { size: portrait; margin: 15mm; }",
-          }}
-        />
-      )}
-      {printMode === "annual" && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html:
-              "@page { size: landscape; margin: 10mm; } #report-print-area { zoom: 0.85; }",
-          }}
-        />
-      )}
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button
@@ -489,339 +836,8 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
         </DialogContent>
       </Dialog>
 
-      {/* ── Print area — OUTSIDE the Dialog portal ── */}
-      <div id="report-print-area" className="hidden">
-        {/* Monthly report */}
-        {printMode === "monthly" && (
-          <div
-            style={{
-              fontFamily: "Arial, sans-serif",
-              color: "#000",
-              padding: "20px",
-            }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                marginBottom: "24px",
-              }}
-            >
-              <ClubLogo className="w-16 h-20" />
-              <div>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: "20px",
-                    fontWeight: 800,
-                  }}
-                >
-                  ФК ВИХЪР ВОЙВОДИНОВО
-                </h1>
-                <h2
-                  style={{
-                    margin: "4px 0 0",
-                    fontSize: "16px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ФИНАНСОВ ОТЧЕТ ЗА МЕСЕЦ{" "}
-                  {BG_MONTHS[month].toUpperCase()} {year}
-                </h2>
-                {groupFilter !== "all" && (
-                  <p
-                    style={{
-                      margin: "4px 0 0",
-                      fontSize: "13px",
-                      color: "#555",
-                    }}
-                  >
-                    Набор: {groupFilter}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            <p style={{ fontSize: "14px", marginBottom: "16px" }}>
-              <strong>Платили:</strong> {paidCount} / {total} ({percentage}
-              %)
-            </p>
-
-            {/* Table */}
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "13px",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                    }}
-                  >
-                    #
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                    }}
-                  >
-                    Име
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                    }}
-                  >
-                    Набор
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                    }}
-                  >
-                    Дата на плащане
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "6px 8px",
-                      textAlign: "left",
-                    }}
-                  >
-                    Статус
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayPlayers.map((player, idx) => {
-                  const isPaid = paidIds.has(player.id);
-                  const paidAt = paidAtMap.get(player.id);
-                  return (
-                    <tr key={player.id}>
-                      <td
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "6px 8px",
-                        }}
-                      >
-                        {idx + 1}
-                      </td>
-                      <td
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "6px 8px",
-                        }}
-                      >
-                        {player.full_name}
-                      </td>
-                      <td
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "6px 8px",
-                        }}
-                      >
-                        {player.team_group ?? "—"}
-                      </td>
-                      <td
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "6px 8px",
-                        }}
-                      >
-                        {isPaid && paidAt
-                          ? new Date(paidAt).toLocaleDateString("bg-BG")
-                          : "—"}
-                      </td>
-                      <td
-                        style={{
-                          borderBottom: "1px solid #ddd",
-                          padding: "6px 8px",
-                        }}
-                      >
-                        {isPaid ? "Платено" : "Неплатено"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            {/* Footer */}
-            <p
-              style={{
-                marginTop: "24px",
-                fontSize: "11px",
-                color: "#888",
-              }}
-            >
-              Генериран на {todayFormatted}
-            </p>
-          </div>
-        )}
-
-        {/* Annual report (matrix) */}
-        {printMode === "annual" && (
-          <div
-            style={{
-              fontFamily: "Arial, sans-serif",
-              color: "#000",
-              padding: "10px",
-            }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                marginBottom: "20px",
-              }}
-            >
-              <ClubLogo className="w-16 h-20" />
-              <div>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: "18px",
-                    fontWeight: 800,
-                  }}
-                >
-                  ФК ВИХЪР ВОЙВОДИНОВО
-                </h1>
-                <h2
-                  style={{
-                    margin: "4px 0 0",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ГОДИШЕН ОТЧЕТ ЗА СЪБИРАЕМОСТ - {year} Г.
-                </h2>
-                {groupFilter !== "all" && (
-                  <p
-                    style={{
-                      margin: "4px 0 0",
-                      fontSize: "12px",
-                      color: "#555",
-                    }}
-                  >
-                    Набор: {groupFilter}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Matrix table */}
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "11px",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "4px 6px",
-                      textAlign: "center",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    #
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "2px solid #000",
-                      padding: "4px 6px",
-                      textAlign: "left",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      minWidth: "120px",
-                    }}
-                  >
-                    Име
-                  </th>
-                  {BG_MONTHS_SHORT.map((m, i) => (
-                    <th
-                      key={i}
-                      style={{
-                        borderBottom: "2px solid #000",
-                        padding: "4px 2px",
-                        textAlign: "center",
-                        fontSize: "10px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {m}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {groupFilter === "all"
-                  ? annualGroups.map((group) => {
-                      const groupPlayers = annualPlayers.filter(
-                        (p) => p.team_group === group,
-                      );
-                      return (
-                        <Fragment key={`group-${group}`}>
-                          <tr className="group-header">
-                            <td
-                              colSpan={14}
-                              style={{
-                                background: "#f0f0f0",
-                                fontWeight: "bold",
-                                padding: "6px 8px",
-                                fontSize: "11px",
-                                borderBottom: "1px solid #ccc",
-                              }}
-                            >
-                              Набор {group ?? "—"}
-                            </td>
-                          </tr>
-                          {groupPlayers.map((player, idx) =>
-                            renderAnnualRow(player, idx),
-                          )}
-                        </Fragment>
-                      );
-                    })
-                  : annualPlayers.map((player, idx) =>
-                      renderAnnualRow(player, idx),
-                    )}
-              </tbody>
-            </table>
-
-            {/* Footer */}
-            <p
-              style={{
-                marginTop: "16px",
-                fontSize: "10px",
-                color: "#888",
-              }}
-            >
-              Генериран на {todayFormatted}
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Portal-rendered print content — direct child of document.body */}
+      {printPortal}
     </>
   );
 }

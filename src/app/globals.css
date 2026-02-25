@@ -155,7 +155,12 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Print styles — only show the receipt card OR report area */
+/* Hidden by default — portal-rendered print section */
+.print-only-section {
+  display: none;
+}
+
+/* Print styles — only show the receipt card OR report section */
 @media print {
   /* ── 1. Global reset ── */
   body * {
@@ -197,45 +202,48 @@
     display: none;
   }
 
-  /* ── 3. Report print area ── */
-  #report-print-area,
-  #report-print-area * {
-    visibility: visible !important;
+  /* ── 3. Report print section (portal-based) ── */
+  /* Hide everything except .print-only-section when printing a report */
+  body.printing-report > *:not(.print-only-section) {
+    display: none !important;
   }
-  #report-print-area {
+  .print-only-section {
     display: block !important;
-    /* absolute (NOT fixed!) so content can span multiple pages */
-    position: absolute;
+    position: absolute !important;
     left: 0;
     top: 0;
     width: 100%;
     z-index: 99999;
     background: white;
   }
+  .print-only-section,
+  .print-only-section * {
+    visibility: visible !important;
+  }
 
   /* ── 4. Table structure & page-break rules ── */
-  #report-print-area table {
+  .print-only-section table {
     display: table;
     width: 100%;
     page-break-inside: auto;   /* allow breaks inside the table */
   }
-  #report-print-area thead {
+  .print-only-section thead {
     display: table-header-group; /* repeat column headers on every page */
   }
-  #report-print-area tbody {
+  .print-only-section tbody {
     display: table-row-group;
   }
-  #report-print-area tr {
+  .print-only-section tr {
     display: table-row;
     page-break-inside: avoid;  /* never split a row across pages */
     page-break-after: auto;
   }
-  #report-print-area th,
-  #report-print-area td {
+  .print-only-section th,
+  .print-only-section td {
     display: table-cell;
   }
   /* Group (Набор) headers must stay with at least one player row */
-  #report-print-area tr.group-header {
+  .print-only-section tr.group-header {
     page-break-after: avoid;
   }
 }
