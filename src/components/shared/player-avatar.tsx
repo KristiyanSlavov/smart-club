@@ -21,10 +21,7 @@ export function PlayerAvatar({
 
   if (!src || failed) {
     return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ width: size, height: size }}
-      >
+      <div className={`flex items-center justify-center ${className}`}>
         <span className={fallbackClass}>{alt.charAt(0)}</span>
       </div>
     );
@@ -40,7 +37,6 @@ export function PlayerAvatar({
       decoding="async"
       onError={() => setFailed(true)}
       className={`object-cover ${className}`}
-      style={{ width: size, height: size }}
     />
   );
 }

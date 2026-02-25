@@ -156,11 +156,11 @@ export function ClubCard({
         {/* ══════ CENTRAL BLOCK: Photo + Info ══════ */}
         <div className="flex flex-col items-center">
           {/* Player photo */}
-          <div className="relative aspect-[9/11] w-36 sm:w-40 overflow-hidden rounded-xl border-2 border-[#32cd32]/20 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
+          <div className="relative aspect-[4/5] w-40 sm:w-44 max-w-[200px] overflow-hidden rounded-xl border-2 border-[#32cd32]/20 bg-white/5 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
             <PlayerAvatar
               src={avatarUrl}
               alt={playerName}
-              size={160}
+              size={200}
               className="h-full w-full rounded-xl"
               fallbackClass="text-5xl text-white/20"
             />
