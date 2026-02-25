@@ -27,7 +27,33 @@ export function HomeScreen() {
       return;
     }
 
-    // 3. Not an admin — show the welcome screen
+    // 3. Non-admin: resolve the last player ID from multiple sources
+    //    Priority: localStorage → URL ?tag= param → cookie (iOS bridge)
+    let resolvedId = localStorage.getItem("lastPlayerId");
+
+    if (!resolvedId) {
+      const tagFromUrl = searchParams.get("tag");
+      if (tagFromUrl) {
+        resolvedId = tagFromUrl;
+        window.history.replaceState(null, "", "/");
+      }
+    }
+
+    if (!resolvedId) {
+      const match = document.cookie.match(/lastPlayerId=([^;]+)/);
+      if (match) {
+        resolvedId = match[1];
+      }
+    }
+
+    if (resolvedId) {
+      // Lock into this context's localStorage so future opens are instant
+      localStorage.setItem("lastPlayerId", resolvedId);
+      router.replace(`/p/${resolvedId}`);
+      return;
+    }
+
+    // 4. No saved profile — show the welcome screen
     setReady(true);
   }, [searchParams, router]);
 
