@@ -16,6 +16,7 @@ export function SmartRedirect({ tagId, children }: SmartRedirectProps) {
     if (localStorage.getItem("isAdmin") === "true") {
       router.replace(`/admin/${tagId}`);
     } else {
+      localStorage.setItem("lastPlayerId", tagId);
       setChecked(true);
     }
   }, [tagId, router]);

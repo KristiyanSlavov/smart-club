@@ -27,7 +27,14 @@ export function HomeScreen() {
       return;
     }
 
-    // 3. Not an admin — show the welcome screen
+    // 3. Non-admin: redirect to last visited profile (iOS PWA fix)
+    const lastPlayerId = localStorage.getItem("lastPlayerId");
+    if (lastPlayerId) {
+      router.replace(`/p/${lastPlayerId}`);
+      return;
+    }
+
+    // 4. No saved profile — show the welcome screen
     setReady(true);
   }, [searchParams, router]);
 
