@@ -27,10 +27,29 @@ export function HomeScreen() {
       return;
     }
 
-    // 3. Non-admin: redirect to last visited profile (iOS PWA fix)
-    const lastPlayerId = localStorage.getItem("lastPlayerId");
-    if (lastPlayerId) {
-      router.replace(`/p/${lastPlayerId}`);
+    // 3. Non-admin: resolve the last player ID from multiple sources
+    //    Priority: localStorage → URL ?tag= param → cookie (iOS bridge)
+    let resolvedId = localStorage.getItem("lastPlayerId");
+
+    if (!resolvedId) {
+      const tagFromUrl = searchParams.get("tag");
+      if (tagFromUrl) {
+        resolvedId = tagFromUrl;
+        window.history.replaceState(null, "", "/");
+      }
+    }
+
+    if (!resolvedId) {
+      const match = document.cookie.match(/lastPlayerId=([^;]+)/);
+      if (match) {
+        resolvedId = match[1];
+      }
+    }
+
+    if (resolvedId) {
+      // Lock into this context's localStorage so future opens are instant
+      localStorage.setItem("lastPlayerId", resolvedId);
+      router.replace(`/p/${resolvedId}`);
       return;
     }
 
