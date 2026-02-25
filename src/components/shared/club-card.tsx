@@ -10,19 +10,32 @@ function formatDate(isoDate: string): string {
   return `${day}.${month}.${year}`;
 }
 
-function statusLabel(status: PlayerStatus): { text: string; color: string; glow: string } {
-  if (status === "paid") {
-    return {
-      text: "ТАКСА: ПЛАТЕНА",
-      color: "text-[#32cd32]",
-      glow: "drop-shadow-[0_0_6px_rgba(50,205,50,0.5)]",
-    };
+function statusLabel(status: PlayerStatus): {
+  text: string;
+  color: string;
+  glow: string;
+} {
+  switch (status) {
+    case "paid":
+      return {
+        text: "ТАКСА: ПЛАТЕНА",
+        color: "text-[#32cd32]",
+        glow: "drop-shadow-[0_0_6px_rgba(50,205,50,0.5)]",
+      };
+    case "warning":
+      return {
+        text: "ПРЕДСТОЯЩО ПЛАЩАНЕ",
+        color: "text-[#fbbf24]",
+        glow: "drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]",
+      };
+    case "overdue":
+    default:
+      return {
+        text: "ТАКСА: ДЪЛЖИМА",
+        color: "text-[#ff4d4d]",
+        glow: "drop-shadow-[0_0_6px_rgba(255,77,77,0.5)]",
+      };
   }
-  return {
-    text: "ТАКСА: ДЪЛЖИМА",
-    color: "text-[#ff4d4d]",
-    glow: "drop-shadow-[0_0_6px_rgba(255,77,77,0.5)]",
-  };
 }
 
 interface ClubCardProps {
@@ -183,7 +196,7 @@ export function ClubCard({
             {/* 4. Статус */}
             <div className="flex justify-between text-sm sm:text-base">
               <span className="font-semibold text-white/50">Статус:</span>
-              <span className={`font-extrabold ${sl.color} ${sl.glow}`}>{sl.text}</span>
+              <span className={`font-bold ${sl.color} ${sl.glow}`}>{sl.text}</span>
             </div>
 
             {/* 5. Последно плащане */}
