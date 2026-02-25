@@ -155,18 +155,11 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Hidden by default — portal-rendered print section */
-.print-only-section {
-  display: none;
-}
-
-/* Print styles — only show the receipt card OR report section */
+/* Print styles — only show the receipt card */
 @media print {
-  /* ── 1. Global reset ── */
   body * {
     visibility: hidden;
   }
-  /* Remove every overflow / height clamp so content flows across pages */
   html,
   body,
   body * {
@@ -175,7 +168,6 @@
     max-height: none !important;
     min-height: 0 !important;
   }
-  /* Kill dialog overlays, portals, close buttons & scrollbars */
   [data-radix-portal],
   [data-slot="dialog-overlay"],
   [data-slot="dialog-close"],
@@ -186,7 +178,7 @@
     display: none;
   }
 
-  /* ── 2. Receipt print area (existing, unchanged) ── */
+  /* Receipt print area */
   #receipt-print-area,
   #receipt-print-area * {
     visibility: visible;
@@ -200,50 +192,5 @@
   }
   #receipt-print-area button {
     display: none;
-  }
-
-  /* ── 3. Report print section (portal-based) ── */
-  /* Hide everything except .print-only-section when printing a report */
-  body.printing-report > *:not(.print-only-section) {
-    display: none !important;
-  }
-  .print-only-section {
-    display: block !important;
-    position: absolute !important;
-    left: 0;
-    top: 0;
-    width: 100%;
-    z-index: 99999;
-    background: white;
-  }
-  .print-only-section,
-  .print-only-section * {
-    visibility: visible !important;
-  }
-
-  /* ── 4. Table structure & page-break rules ── */
-  .print-only-section table {
-    display: table;
-    width: 100%;
-    page-break-inside: auto;   /* allow breaks inside the table */
-  }
-  .print-only-section thead {
-    display: table-header-group; /* repeat column headers on every page */
-  }
-  .print-only-section tbody {
-    display: table-row-group;
-  }
-  .print-only-section tr {
-    display: table-row;
-    page-break-inside: avoid;  /* never split a row across pages */
-    page-break-after: auto;
-  }
-  .print-only-section th,
-  .print-only-section td {
-    display: table-cell;
-  }
-  /* Group (Набор) headers must stay with at least one player row */
-  .print-only-section tr.group-header {
-    page-break-after: avoid;
   }
 }
