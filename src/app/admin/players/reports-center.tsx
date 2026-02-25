@@ -219,10 +219,18 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
 
   return (
     <>
+      {printMode === "monthly" && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: "@page { size: portrait; margin: 15mm; }",
+          }}
+        />
+      )}
       {printMode === "annual" && (
         <style
           dangerouslySetInnerHTML={{
-            __html: "@page { size: landscape; }",
+            __html:
+              "@page { size: landscape; margin: 10mm; } #report-print-area { zoom: 0.85; }",
           }}
         />
       )}
@@ -775,7 +783,7 @@ export function ReportsCenter({ players, groups }: ReportsCenterProps) {
                       );
                       return (
                         <Fragment key={`group-${group}`}>
-                          <tr>
+                          <tr className="group-header">
                             <td
                               colSpan={14}
                               style={{

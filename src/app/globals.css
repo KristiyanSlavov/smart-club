@@ -157,9 +157,31 @@
 
 /* Print styles — only show the receipt card OR report area */
 @media print {
+  /* ── 1. Global reset ── */
   body * {
     visibility: hidden;
   }
+  /* Remove every overflow / height clamp so content flows across pages */
+  html,
+  body,
+  body * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+  /* Kill dialog overlays, portals, close buttons & scrollbars */
+  [data-radix-portal],
+  [data-slot="dialog-overlay"],
+  [data-slot="dialog-close"],
+  [role="dialog"] {
+    display: none !important;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── 2. Receipt print area (existing, unchanged) ── */
   #receipt-print-area,
   #receipt-print-area * {
     visibility: visible;
@@ -171,37 +193,49 @@
     width: 100%;
     box-shadow: none;
   }
-  /* Hide the footer buttons when printing */
   #receipt-print-area button {
     display: none;
   }
+
+  /* ── 3. Report print area ── */
   #report-print-area,
   #report-print-area * {
     visibility: visible !important;
   }
   #report-print-area {
     display: block !important;
-    position: fixed;
+    /* absolute (NOT fixed!) so content can span multiple pages */
+    position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     z-index: 99999;
     background: white;
   }
+
+  /* ── 4. Table structure & page-break rules ── */
   #report-print-area table {
     display: table;
+    width: 100%;
+    page-break-inside: auto;   /* allow breaks inside the table */
   }
   #report-print-area thead {
-    display: table-header-group;
+    display: table-header-group; /* repeat column headers on every page */
   }
   #report-print-area tbody {
     display: table-row-group;
   }
   #report-print-area tr {
     display: table-row;
+    page-break-inside: avoid;  /* never split a row across pages */
+    page-break-after: auto;
   }
   #report-print-area th,
   #report-print-area td {
     display: table-cell;
+  }
+  /* Group (Набор) headers must stay with at least one player row */
+  #report-print-area tr.group-header {
+    page-break-after: avoid;
   }
 }
