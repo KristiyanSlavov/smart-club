@@ -95,10 +95,8 @@ function ReceiptModal({
           {/* Stamp */}
           <div className="my-6 flex items-center justify-center">
             <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-dashed border-[#32cd32]/60 rotate-[-12deg]">
-              <span className="text-center text-xs font-black uppercase leading-tight tracking-wider text-[#32cd32]">
-                ПОТВЪР
-                <br />
-                ДЕНО
+              <span className="text-sm font-black uppercase tracking-wider text-[#32cd32] whitespace-nowrap">
+                ПЛАТЕНО
               </span>
             </div>
           </div>
