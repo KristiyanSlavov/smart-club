@@ -163,8 +163,7 @@ export default function TermsPage() {
 
         {/* Footer */}
         <footer className="border-t border-white/10 pt-6 pb-4 text-center text-[11px] text-white/20">
-          &copy; 2026 Кристиян Славов. Всички права запазени. &middot; Powered
-          by Mozyk
+          &copy; 2026 Кристиян Славов. Всички права запазени. &middot;
         </footer>
       </div>
     </main>
