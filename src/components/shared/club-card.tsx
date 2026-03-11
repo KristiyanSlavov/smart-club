@@ -10,19 +10,32 @@ function formatDate(isoDate: string): string {
   return `${day}.${month}.${year}`;
 }
 
-function statusLabel(status: PlayerStatus): { text: string; color: string; glow: string } {
-  if (status === "paid") {
-    return {
-      text: "ТАКСА: ПЛАТЕНА",
-      color: "text-[#32cd32]",
-      glow: "drop-shadow-[0_0_6px_rgba(50,205,50,0.5)]",
-    };
+function statusLabel(status: PlayerStatus): {
+  text: string;
+  color: string;
+  glow: string;
+} {
+  switch (status) {
+    case "paid":
+      return {
+        text: "ТАКСА: ПЛАТЕНА",
+        color: "text-[#32cd32]",
+        glow: "drop-shadow-[0_0_6px_rgba(50,205,50,0.5)]",
+      };
+    case "warning":
+      return {
+        text: "ПРЕДСТОЯЩО ПЛАЩАНЕ",
+        color: "text-[#fbbf24]",
+        glow: "drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]",
+      };
+    case "overdue":
+    default:
+      return {
+        text: "ТАКСА: ДЪЛЖИМА",
+        color: "text-[#ff4d4d]",
+        glow: "drop-shadow-[0_0_6px_rgba(255,77,77,0.5)]",
+      };
   }
-  return {
-    text: "ТАКСА: ДЪЛЖИМА",
-    color: "text-[#ff4d4d]",
-    glow: "drop-shadow-[0_0_6px_rgba(255,77,77,0.5)]",
-  };
 }
 
 interface ClubCardProps {
@@ -143,11 +156,11 @@ export function ClubCard({
         {/* ══════ CENTRAL BLOCK: Photo + Info ══════ */}
         <div className="flex flex-col items-center">
           {/* Player photo */}
-          <div className="relative aspect-[9/11] w-36 sm:w-40 overflow-hidden rounded-xl border-2 border-[#32cd32]/20 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
+          <div className="relative aspect-[4/5] w-40 sm:w-44 max-w-[200px] overflow-hidden rounded-xl border-2 border-[#32cd32]/20 bg-white/5 shadow-[0_0_20px_rgba(50,205,50,0.15)]">
             <PlayerAvatar
               src={avatarUrl}
               alt={playerName}
-              size={160}
+              size={200}
               className="h-full w-full rounded-xl"
               fallbackClass="text-5xl text-white/20"
             />
@@ -183,7 +196,7 @@ export function ClubCard({
             {/* 4. Статус */}
             <div className="flex justify-between text-sm sm:text-base">
               <span className="font-semibold text-white/50">Статус:</span>
-              <span className={`font-extrabold ${sl.color} ${sl.glow}`}>{sl.text}</span>
+              <span className={`font-bold ${sl.color} ${sl.glow}`}>{sl.text}</span>
             </div>
 
             {/* 5. Последно плащане */}
