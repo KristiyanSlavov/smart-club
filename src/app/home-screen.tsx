@@ -90,7 +90,7 @@ export function HomeScreen() {
       <footer className="absolute bottom-6 text-center text-[11px] text-white/20">
         <p>&copy; 2026 Кристиян Славов. Всички права запазени.</p>
         <p className="mt-1">
-          Smart Club &middot; Powered by Mozyk &middot;{" "}
+          Smart Club &middot;{" "}
           <Link href="/terms" className="underline hover:text-[#32cd32] transition-colors">
             Условия за ползване
           </Link>
