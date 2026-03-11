@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PlayersListDashboard } from "./players-list";
 import { ReportsCenter } from "./reports-center";
@@ -50,6 +51,17 @@ export default async function PlayersPage() {
           players={(players as Player[]) ?? []}
           groups={groups}
         />
+
+        {/* Footer */}
+        <footer className="mt-12 border-t border-white/10 pt-6 pb-4 text-center text-[11px] text-white/20">
+          <p>&copy; 2026 Кристиян Славов. Всички права запазени.</p>
+          <p className="mt-1">
+            Smart Club &middot; Powered by Mozyk &middot;{" "}
+            <Link href="/terms" className="underline hover:text-[#32cd32] transition-colors">
+              Условия за ползване
+            </Link>
+          </p>
+        </footer>
       </div>
     </main>
   );
