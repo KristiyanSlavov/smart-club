@@ -1,8 +1,19 @@
+/**
+ * Smart Club — Proprietary Software
+ * Copyright (c) 2026 Кристиян Славов. All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorized copying, modification, distribution, or use of this software,
+ * in whole or in part, is strictly prohibited without prior written permission.
+ * Protected under applicable copyright and intellectual property laws.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shield } from "lucide-react";
+import Link from "next/link";
 
 const ACCESS_KEY = process.env.NEXT_PUBLIC_ADMIN_ACCESS_KEY;
 
@@ -76,8 +87,14 @@ export function HomeScreen() {
         Сканирайте вашата NFC карта, за да видите клубния си профил.
       </p>
 
-      <footer className="absolute bottom-6 text-[11px] text-white/20">
-        Smart Club &copy; {new Date().getFullYear()} &middot; Powered by Mozyk
+      <footer className="absolute bottom-6 text-center text-[11px] text-white/20">
+        <p>&copy; 2026 Кристиян Славов. Всички права запазени.</p>
+        <p className="mt-1">
+          Smart Club &middot;{" "}
+          <Link href="/terms" className="underline hover:text-[#32cd32] transition-colors">
+            Условия за ползване
+          </Link>
+        </p>
       </footer>
 
       {toast && (

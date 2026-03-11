@@ -1,3 +1,13 @@
+/**
+ * Smart Club — Proprietary Software
+ * Copyright (c) 2026 Кристиян Славов. All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorized copying, modification, distribution, or use of this software,
+ * in whole or in part, is strictly prohibited without prior written permission.
+ * Protected under applicable copyright and intellectual property laws.
+ */
+
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
